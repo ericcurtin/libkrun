@@ -25,6 +25,7 @@ pub mod file_traits;
 pub mod fs;
 #[cfg(feature = "gpu")]
 pub mod gpu;
+pub mod input;
 pub mod linux_errno;
 mod mmio;
 #[cfg(feature = "net")]
@@ -46,6 +47,7 @@ pub use self::device::*;
 pub use self::fs::*;
 #[cfg(feature = "gpu")]
 pub use self::gpu::*;
+pub use self::input::*;
 pub use self::mmio::*;
 #[cfg(feature = "net")]
 pub use self::net::Net;
@@ -77,6 +79,7 @@ mod device_status {
 /// Type 0 is not used by virtio. Use it as wildcard for non-virtio devices
 pub const TYPE_NET: u32 = 1;
 pub const TYPE_BLOCK: u32 = 2;
+pub const TYPE_INPUT: u32 = 18;
 
 /// Interrupt flags (re: interrupt status & acknowledge registers).
 /// See linux/virtio_mmio.h.

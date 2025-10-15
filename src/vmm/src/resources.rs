@@ -141,6 +141,8 @@ pub struct VmResources {
     #[cfg(feature = "snd")]
     /// Enable the virtio-snd device.
     pub snd_device: bool,
+    /// Enable virtio-input devices (keyboard and mouse).
+    pub virtio_input_enabled: bool,
     /// File to send console output.
     pub console_output: Option<PathBuf>,
     /// SMBIOS OEM Strings
@@ -309,6 +311,10 @@ impl VmResources {
         self.snd_device = enabled;
     }
 
+    pub fn set_virtio_input_enabled(&mut self, enabled: bool) {
+        self.virtio_input_enabled = enabled;
+    }
+
     pub fn set_console_output(&mut self, console_output: PathBuf) {
         self.console_output = Some(console_output);
     }
@@ -387,7 +393,8 @@ mod tests {
             #[cfg(feature = "gpu")]
             displays: Vec::new(),
             #[cfg(feature = "snd")]
-            enable_snd: False,
+            snd_device: false,
+            virtio_input_enabled: false,
             console_output: None,
             smbios_oem_strings: None,
             nested_enabled: false,

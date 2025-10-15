@@ -200,6 +200,8 @@ pub enum StartMicrovmError {
     RegisterNetDevice(device_manager::mmio::Error),
     /// Cannot initialize a MMIO Rng device or add a device to the MMIO Bus.
     RegisterRngDevice(device_manager::mmio::Error),
+    /// Cannot initialize a MMIO Input device or add a device to the MMIO Bus.
+    RegisterInputDevice(device_manager::mmio::Error),
     /// Cannot initialize a MMIO Snd device or add a device to the MMIO Bus.
     RegisterSndDevice(device_manager::mmio::Error),
     /// Cannot initialize a MMIO Vsock Device or add a device to the MMIO Bus.
@@ -432,6 +434,14 @@ impl Display for StartMicrovmError {
                 write!(
                     f,
                     "Cannot initialize a MMIO Rng Device or add a device to the MMIO Bus. {err_msg}"
+                )
+            }
+            RegisterInputDevice(ref err) => {
+                let mut err_msg = format!("{err}");
+                err_msg = err_msg.replace('\"', "");
+                write!(
+                    f,
+                    "Cannot initialize a MMIO Input Device or add a device to the MMIO Bus. {err_msg}"
                 )
             }
             RegisterSndDevice(ref err) => {
@@ -939,6 +949,11 @@ pub fn build_microvm(
     attach_balloon_device(&mut vmm, event_manager, intc.clone())?;
     #[cfg(not(feature = "tee"))]
     attach_rng_device(&mut vmm, event_manager, intc.clone())?;
+    
+    if vm_resources.virtio_input_enabled {
+        attach_input_devices(&mut vmm, event_manager, intc.clone())?;
+    }
+    
     let mut console_id = 0;
     if !vm_resources.disable_implicit_console {
         attach_console_devices(
@@ -2093,6 +2108,51 @@ fn attach_rng_device(
 
     // The device mutex mustn't be locked here otherwise it will deadlock.
     attach_mmio_device(vmm, id, intc.clone(), rng).map_err(RegisterRngDevice)?;
+
+    Ok(())
+}
+
+fn attach_input_devices(
+    vmm: &mut Vmm,
+    event_manager: &mut EventManager,
+    intc: IrqChip,
+) -> std::result::Result<(), StartMicrovmError> {
+    use self::StartMicrovmError::*;
+
+    // Attach keyboard device
+    let keyboard = Arc::new(Mutex::new(
+        devices::virtio::Input::new_keyboard().map_err(|_| {
+            RegisterInputDevice(device_manager::mmio::Error::EventFd(io::Error::new(
+                io::ErrorKind::Other,
+                "Failed to create keyboard device",
+            )))
+        })?,
+    ));
+
+    event_manager
+        .add_subscriber(keyboard.clone())
+        .map_err(RegisterEvent)?;
+
+    let keyboard_id = String::from("virtio-input-keyboard");
+    attach_mmio_device(vmm, keyboard_id, intc.clone(), keyboard)
+        .map_err(RegisterInputDevice)?;
+
+    // Attach mouse device
+    let mouse = Arc::new(Mutex::new(
+        devices::virtio::Input::new_mouse().map_err(|_| {
+            RegisterInputDevice(device_manager::mmio::Error::EventFd(io::Error::new(
+                io::ErrorKind::Other,
+                "Failed to create mouse device",
+            )))
+        })?,
+    ));
+
+    event_manager
+        .add_subscriber(mouse.clone())
+        .map_err(RegisterEvent)?;
+
+    let mouse_id = String::from("virtio-input-mouse");
+    attach_mmio_device(vmm, mouse_id, intc.clone(), mouse).map_err(RegisterInputDevice)?;
 
     Ok(())
 }
