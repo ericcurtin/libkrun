@@ -155,6 +155,7 @@ struct ContextConfig {
     gpu_virgl_flags: Option<u32>,
     gpu_shm_size: Option<usize>,
     enable_snd: bool,
+    enable_virtio_input: bool,
     console_output: Option<PathBuf>,
     vmm_uid: Option<libc::uid_t>,
     vmm_gid: Option<libc::gid_t>,
@@ -1612,6 +1613,52 @@ pub unsafe extern "C" fn krun_set_nested_virt(ctx_id: u32, enabled: bool) -> i32
         }
         Entry::Vacant(_) => -libc::ENOENT,
     }
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[no_mangle]
+pub extern "C" fn krun_enable_virtio_input(ctx_id: u32) -> i32 {
+    match CTX_MAP.lock().unwrap().entry(ctx_id) {
+        Entry::Occupied(mut ctx_cfg) => {
+            let cfg = ctx_cfg.get_mut();
+            cfg.enable_virtio_input = true;
+            KRUN_SUCCESS
+        }
+        Entry::Vacant(_) => -libc::ENOENT,
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[no_mangle]
+pub extern "C" fn krun_inject_keyboard_event(
+    _ctx_id: u32,
+    _keycode: u16,
+    _pressed: u8,
+) -> i32 {
+    // TODO: Implement event injection
+    // This requires storing a reference to the input devices after they're created
+    -libc::ENOSYS
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[no_mangle]
+pub extern "C" fn krun_inject_mouse_button(_ctx_id: u32, _button: u16, _pressed: u8) -> i32 {
+    // TODO: Implement event injection
+    -libc::ENOSYS
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[no_mangle]
+pub extern "C" fn krun_inject_mouse_motion(_ctx_id: u32, _dx: i32, _dy: i32) -> i32 {
+    // TODO: Implement event injection
+    -libc::ENOSYS
+}
+
+#[allow(clippy::missing_safety_doc)]
+#[no_mangle]
+pub extern "C" fn krun_inject_mouse_wheel(_ctx_id: u32, _delta: i32) -> i32 {
+    // TODO: Implement event injection
+    -libc::ENOSYS
 }
 
 #[allow(clippy::missing_safety_doc)]

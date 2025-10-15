@@ -1005,6 +1005,68 @@ int32_t krun_add_serial_console_default(uint32_t ctx_id,
 int32_t krun_set_root_disk_remount(uint32_t ctx_id, const char *device, const char *fstype, const char *options);
 
 /**
+ * Enables virtio-input devices (keyboard and mouse) for the VM.
+ *
+ * Arguments:
+ *  "ctx_id" - the configuration context ID.
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ */
+int32_t krun_enable_virtio_input(uint32_t ctx_id);
+
+/**
+ * Injects a keyboard event into the VM.
+ *
+ * Arguments:
+ *  "ctx_id"  - the configuration context ID.
+ *  "keycode" - the Linux keycode for the key
+ *  "pressed" - 1 if the key is pressed, 0 if released
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ */
+int32_t krun_inject_keyboard_event(uint32_t ctx_id, uint16_t keycode, uint8_t pressed);
+
+/**
+ * Injects a mouse button event into the VM.
+ *
+ * Arguments:
+ *  "ctx_id"  - the configuration context ID.
+ *  "button"  - the button code (BTN_LEFT=0x110, BTN_RIGHT=0x111, BTN_MIDDLE=0x112)
+ *  "pressed" - 1 if the button is pressed, 0 if released
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ */
+int32_t krun_inject_mouse_button(uint32_t ctx_id, uint16_t button, uint8_t pressed);
+
+/**
+ * Injects a mouse motion event into the VM.
+ *
+ * Arguments:
+ *  "ctx_id" - the configuration context ID.
+ *  "dx"     - relative motion in X axis
+ *  "dy"     - relative motion in Y axis
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ */
+int32_t krun_inject_mouse_motion(uint32_t ctx_id, int32_t dx, int32_t dy);
+
+/**
+ * Injects a mouse wheel event into the VM.
+ *
+ * Arguments:
+ *  "ctx_id" - the configuration context ID.
+ *  "delta"  - wheel delta (positive for scroll up, negative for scroll down)
+ *
+ * Returns:
+ *  Zero on success or a negative error number on failure.
+ */
+int32_t krun_inject_mouse_wheel(uint32_t ctx_id, int32_t delta);
+
+/**
  * Starts and enters the microVM with the configured parameters. The VMM will attempt to take over
  * stdin/stdout to manage them on behalf of the process running inside the isolated environment,
  * simulating that the latter has direct control of the terminal.
