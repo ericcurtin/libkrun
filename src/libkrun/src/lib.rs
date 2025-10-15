@@ -155,7 +155,6 @@ struct ContextConfig {
     gpu_virgl_flags: Option<u32>,
     gpu_shm_size: Option<usize>,
     enable_snd: bool,
-    enable_virtio_input: bool,
     console_output: Option<PathBuf>,
     vmm_uid: Option<libc::uid_t>,
     vmm_gid: Option<libc::gid_t>,
@@ -1621,7 +1620,7 @@ pub extern "C" fn krun_enable_virtio_input(ctx_id: u32) -> i32 {
     match CTX_MAP.lock().unwrap().entry(ctx_id) {
         Entry::Occupied(mut ctx_cfg) => {
             let cfg = ctx_cfg.get_mut();
-            cfg.enable_virtio_input = true;
+            cfg.vmr.set_virtio_input_enabled(true);
             KRUN_SUCCESS
         }
         Entry::Vacant(_) => -libc::ENOENT,

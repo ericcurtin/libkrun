@@ -5,10 +5,13 @@
 
 use std::cmp;
 use std::io::Write;
+use std::os::unix::io::AsRawFd;
 use std::result;
 use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{unbounded, Sender};
+use polly::event_manager::{EventManager, Subscriber};
+use utils::epoll::{EpollEvent, EventSet};
 use utils::eventfd::EventFd;
 use vm_memory::{ByteValued, Bytes, GuestMemoryMmap};
 
@@ -45,6 +48,7 @@ pub struct Input {
     config: VirtioInputConfig,
     event_sender: Sender<VirtioInputEvent>,
     event_buffer: Arc<Mutex<Vec<VirtioInputEvent>>>,
+    activate_evt: EventFd,
 }
 
 impl Input {
@@ -70,6 +74,8 @@ impl Input {
         let (event_sender, _event_receiver) = unbounded();
         let event_buffer = Arc::new(Mutex::new(Vec::new()));
 
+        let activate_evt = EventFd::new(utils::eventfd::EFD_NONBLOCK).map_err(Error::EventFd)?;
+
         Ok(Input {
             device_type,
             device_name: format!("virtio-input-{}", name),
@@ -83,6 +89,7 @@ impl Input {
             config: VirtioInputConfig::default(),
             event_sender,
             event_buffer,
+            activate_evt,
         })
     }
 
@@ -263,6 +270,51 @@ impl VirtioDevice for Input {
 
     fn activate(&mut self, mem: GuestMemoryMmap, interrupt: InterruptTransport) -> ActivateResult {
         self.device_state = DeviceState::Activated(mem, interrupt);
+        self.activate_evt.write(1).unwrap();
         Ok(())
+    }
+}
+
+impl Subscriber for Input {
+    fn process(&mut self, event: &EpollEvent, _event_manager: &mut EventManager) {
+        let source = event.fd();
+        let event_set = event.event_set();
+
+        if self.is_activated() {
+            let event_queue_fd = self.queue_events[0].as_raw_fd();
+            let status_queue_fd = self.queue_events[1].as_raw_fd();
+            let activate_fd = self.activate_evt.as_raw_fd();
+
+            match source {
+                _ if source == event_queue_fd => {
+                    debug!("Input: event queue triggered");
+                }
+                _ if source == status_queue_fd => {
+                    debug!("Input: status queue triggered");
+                }
+                _ if source == activate_fd => {
+                    debug!("Input: activation event");
+                    if let Err(e) = self.activate_evt.read() {
+                        error!("Failed to get activate event: {e:?}");
+                    }
+                }
+                _ => {
+                    warn!("Input: Unexpected event received: {source:?}");
+                }
+            }
+        } else {
+            warn!("Input: The device is not yet activated. Spurious event received: {source:?}");
+        }
+
+        if event_set != EventSet::IN {
+            warn!("Input: unexpected event_set: {:?}", event_set);
+        }
+    }
+
+    fn interest_list(&self) -> Vec<EpollEvent> {
+        vec![EpollEvent::new(
+            EventSet::IN,
+            self.activate_evt.as_raw_fd() as u64,
+        )]
     }
 }
