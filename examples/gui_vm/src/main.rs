@@ -5,8 +5,8 @@ use krun_sys::{
     VIRGLRENDERER_RENDER_SERVER, VIRGLRENDERER_THREAD_SYNC, VIRGLRENDERER_USE_ASYNC_FENCE_CB,
     VIRGLRENDERER_USE_EGL, VIRGLRENDERER_VENUS, krun_add_display, krun_create_ctx,
     krun_display_set_dpi, krun_display_set_physical_size, krun_display_set_refresh_rate,
-    krun_set_display_backend, krun_set_exec, krun_set_gpu_options, krun_set_log_level,
-    krun_set_root, krun_start_enter,
+    krun_enable_virtio_input, krun_set_display_backend, krun_set_exec, krun_set_gpu_options,
+    krun_set_log_level, krun_set_root, krun_start_enter,
 };
 use log::LevelFilter;
 use regex::{Captures, Regex};
@@ -106,6 +106,9 @@ fn krun_thread(args: &Args, display_backend_handle: DisplayBackendHandle) -> any
                 | VIRGLRENDERER_THREAD_SYNC
                 | VIRGLRENDERER_USE_ASYNC_FENCE_CB
         ))?;
+
+        // Enable virtio-input devices for keyboard and mouse support
+        krun_call!(krun_enable_virtio_input(ctx))?;
 
         if let Some(root_dir) = &args.root_dir {
             krun_call!(krun_set_root(ctx, root_dir.as_ptr()))?;
