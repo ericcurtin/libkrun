@@ -196,7 +196,13 @@ pub fn arch_memory_regions(
         ram_last_addr,
         shm_start_addr,
         page_size,
-        initrd_addr: ram_last_addr - initrd_size,
+        // Keep the initrd below the 32-bit gap: every x86 delivery path
+        // truncates its address to u32 somewhere (boot_params'
+        // hdr.ramdisk_image both here and in Linux's own PVH
+        // init_pvh_bootparams), so placing it at top-of-RAM breaks
+        // guests larger than 4 GiB with a "VFS: Unable to mount root
+        // fs" panic (the kernel never sees the initramfs at all).
+        initrd_addr: ram_last_addr.min(MMIO_MEM_START) - initrd_size,
         firmware_addr,
     };
     (info, regions)
